@@ -25,11 +25,11 @@ Nesta unidade, você aprenderá os fundamentos da Internet das Coisas (IoT), exp
 - Implementação de comunicação entre dispositivos
 - Integração com plataformas na nuvem
 
+---
+
 ## 📂 Projetos Desenvolvidos
 
 Aqui estão os projetos que estamos desenvolvendo nesta unidade curricular:
-
----
 
 1. **Pisca LED**
 
