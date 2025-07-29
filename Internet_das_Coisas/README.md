@@ -31,9 +31,12 @@ Nesta unidade, você aprenderá os fundamentos da Internet das Coisas (IoT), exp
 
 Aqui estão os projetos que estamos desenvolvendo nesta unidade curricular:
 
+---
+
 1. **Pisca LED**
 
    - Descrição: Um projeto simples para alternar o estado de dois LEDs.
+   - Código: [01_Pisca_Led.ino](./01_Pisca_Led.ino)
    - Imagem:
      <div style="text-align: left;">
      <img src="./img/01_Pisca_Led.png" alt="Pisca LED" width="600">
@@ -44,6 +47,7 @@ Aqui estão os projetos que estamos desenvolvendo nesta unidade curricular:
 2. **Semáforo**
 
    - Descrição: Simulação de um semáforo com LEDs vermelho, amarelo e verde.
+   - Código: [02_Semaforo.ino](./02_Semaforo.ino)
    - Imagem:
      <div style="text-align: left;">
      <img src="./img/02_Semaforo.png" alt="Semáforo" width="600">
@@ -54,6 +58,7 @@ Aqui estão os projetos que estamos desenvolvendo nesta unidade curricular:
 3. **Exemplo com Millis**
 
    - Descrição: Demonstração do uso da função `millis` para controle de tempo sem bloquear o programa.
+   - Código: [03_Exemplo_Millis.ino](./03_Exemplo_Millis.ino)
    - Imagem:
      <div style="text-align: left;">
      <img src="./img/03_Exemplo_Millis.png" alt="Exemplo com Millis" width="600">
@@ -64,6 +69,7 @@ Aqui estão os projetos que estamos desenvolvendo nesta unidade curricular:
 4. **Exemplo com Millis 2**
 
    - Descrição: Outro exemplo utilizando `millis` para controle avançado de tempo.
+   - Código: [04_Exemplo_Millis_02.ino](./04_Exemplo_Millis_02.ino)
    - Imagem:
      <div style="text-align: left;">
      <img src="./img/04_Exemplo_Millis_02.png" alt="Exemplo com Millis 2" width="600">
