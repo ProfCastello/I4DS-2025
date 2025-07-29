@@ -26,7 +26,7 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
   - Uso de sensores e atuadores
   - Protocolos de comunicação IoT (MQTT)
 
-#### 2. [Programação Front-End](./Programacao_Front_End/README.md)
+#### 2. [Programação Front-End](./Programacao_Front_End)
 
 - **Carga Horária:** 75h
 - **Competências:**
@@ -35,7 +35,7 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
   - Integração com APIs REST
   - Boas práticas de UX/UI
 
-#### 3. [Programação para Dispositivos Móveis](./Programacao_Dispositivos_Moveis/README.md)
+#### 3. [Programação para Dispositivos Móveis](./Programacao_Dispositivos_Moveis)
 
 - **Carga Horária:** 60h
 - **Competências:**
@@ -44,7 +44,7 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
   - Publicação em lojas de aplicativos
   - Gerenciamento de ciclo de vida de aplicativos
 
-#### 4. [Testes de Software](./Testes_Software/README.md)
+#### 4. [Testes de Software](./Testes_Software)
 
 - **Carga Horária:** 45h
 - **Competências:**
@@ -53,7 +53,7 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
   - Ferramentas de teste
   - Garantia de qualidade de software
 
-#### 5. [Projetos de Software](./Projetos_Software/README.md)
+#### 5. [Projetos de Software](./Projetos_Software)
 
 - **Carga Horária:** 45h
 - **Competências:**
@@ -113,10 +113,10 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
 
 #### Critérios de Avaliação
 
-- **Projetos Práticos:**
-- **Provas Teóricas:**
-- **Atividades Colaborativas:**
-- **Participação e Frequência:**
+- **Projetos Práticos**
+- **Provas Teóricas**
+- **Atividades Colaborativas**
+- **Participação e Frequência**
 
 #### Indicadores de Desempenho
 
