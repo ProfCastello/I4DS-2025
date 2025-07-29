@@ -17,7 +17,7 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
 
 ### 📖 Unidades Curriculares
 
-#### 1. Programação Front-End
+#### 1. [Programação Front-End](./Programacao_Front_End/README.md)
 
 - **Carga Horária:** 75h
 - **Competências:**
@@ -26,7 +26,7 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
   - Integração com APIs REST
   - Boas práticas de UX/UI
 
-#### 2. Programação para Dispositivos Móveis
+#### 2. [Programação para Dispositivos Móveis](./Programacao_Dispositivos_Moveis/README.md)
 
 - **Carga Horária:** 60h
 - **Competências:**
@@ -35,7 +35,7 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
   - Publicação em lojas de aplicativos
   - Gerenciamento de ciclo de vida de aplicativos
 
-#### 3. Internet das Coisas (IoT)
+#### 3. [Internet das Coisas (IoT)](./Internet_das_Coisas/README.md)
 
 - **Carga Horária:** 75h
 - **Competências:**
@@ -44,7 +44,7 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
   - Uso de sensores e atuadores
   - Protocolos de comunicação IoT (MQTT)
 
-#### 4. Testes de Software
+#### 4. [Testes de Software](./Testes_Software/README.md)
 
 - **Carga Horária:** 45h
 - **Competências:**
@@ -53,7 +53,7 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
   - Ferramentas de teste
   - Garantia de qualidade de software
 
-#### 5. Projetos de Software
+#### 5. [Projetos de Software](./Projetos_Software/README.md)
 
 - **Carga Horária:** 45h
 - **Competências:**
