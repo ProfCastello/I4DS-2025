@@ -79,7 +79,7 @@ Aqui estão os projetos que estamos desenvolvendo nesta unidade curricular:
 
 5. **Sensor DHT22 - Temperatura e Umidade**
 
-   - Des crição: Projeto para leitura de temperatura e umidade utilizando o sensor DHT22, com exibição dos dados no monitor serial.
+   - Descrição: Projeto para leitura de temperatura e umidade utilizando o sensor DHT22, com exibição dos dados no monitor serial.
    - Código: [05_DHT22_Temperatura_Umidade.ino](./05_DHT22_Temperatura_Umidade.ino)
    - Imagem:
      <div style="text-align: left;">
