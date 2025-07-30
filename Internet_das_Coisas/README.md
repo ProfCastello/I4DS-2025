@@ -55,24 +55,24 @@ Aqui estão os projetos que estamos desenvolvendo nesta unidade curricular:
 
 ---
 
-3. **Exemplo com Millis**
+3. **Função Millis**
 
    - Descrição: Demonstração do uso da função `millis` para controle de tempo sem bloquear o programa.
-   - Código: [03_Exemplo_Millis.ino](./03_Exemplo_Millis.ino)
+   - Código: [03_Funcao_Millis.ino](./03_Funcao_Millis.ino)
    - Imagem:
      <div style="text-align: left;">
-     <img src="./img/03_Exemplo_Millis.png" alt="Exemplo com Millis" width="600">
+     <img src="./img/03_Funcao_Millis.png" alt="Função Millis" width="600">
      </div>
 
 ---
 
-4. **Exemplo com Millis 2**
+4. **Millis com Interrupção**
 
-   - Descrição: Outro exemplo utilizando `millis` para controle avançado de tempo.
-   - Código: [04_Exemplo_Millis_02.ino](./04_Exemplo_Millis_02.ino)
+   - Descrição: Exemplo utilizando `millis` com interrupção para controle avançado de tempo.
+   - Código: [04_Millis_Interrupcao.ino](./04_Millis_Interrupcao.ino)
    - Imagem:
      <div style="text-align: left;">
-     <img src="./img/04_Exemplo_Millis_02.png" alt="Exemplo com Millis 2" width="600">
+     <img src="./img/04_Millis_Interrupcao.png" alt="Millis com Interrupção" width="600">
      </div>
 
 ---
