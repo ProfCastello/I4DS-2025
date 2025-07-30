@@ -76,3 +76,25 @@ Aqui estão os projetos que estamos desenvolvendo nesta unidade curricular:
      </div>
 
 ---
+
+5. **Sensor DHT22 - Temperatura e Umidade**
+
+   - Descrição: Projeto para leitura de temperatura e umidade utilizando o sensor DHT22, com exibição dos dados no monitor serial.
+   - Código: [05_DHT22_Temperatura_Umidade.ino](./05_DHT22_Temperatura_Umidade.ino)
+   - Imagem:
+     <div style="text-align: left;">
+     <img src="./img/05_DHT22_Temperatura_Umidade.png" alt="Sensor DHT22 - Temperatura e Umidade" width="600">
+     </div>
+
+---
+
+6. **LED RGB com Potenciômetro**
+
+   - Descrição: Controle de LED RGB utilizando potenciômetros para ajustar as cores (vermelho, verde e azul) de forma independente.
+   - Código: [06_LED_RGB_Potenciometro.ino](./06_LED_RGB_Potenciometro.ino)
+   - Imagem:
+     <div style="text-align: left;">
+     <img src="./img/06_LED_RGB_Potenciometro.png" alt="LED RGB com Potenciômetro" width="600">
+     </div>
+
+---
