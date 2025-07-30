@@ -98,3 +98,14 @@ Aqui estão os projetos que estamos desenvolvendo nesta unidade curricular:
      </div>
 
 ---
+
+7. **Joystick com Display OLED e Botões**
+
+   - Descrição: Projeto que utiliza um joystick e botões para interagir com um display OLED, exibindo mensagens e direções do joystick.
+   - Código: [07_Joystick_Display_Oled_Botoes.ino](./07_Joystick_Display_Oled_Botoes.ino)
+   - Imagem:
+     <div style="text-align: left;">
+     <img src="./img/07_Joystick_Display_Oled_Botoes.png" alt="Joystick com Display OLED e Botões" width="600">
+     </div>
+
+---
