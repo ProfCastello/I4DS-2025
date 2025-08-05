@@ -15,6 +15,46 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
 - Gerenciar e documentar projetos de software de forma eficiente
 - Aplicar metodologias ágeis no desenvolvimento de soluções tecnológicas
 
+### 🔗 Links Rápidos
+
+- [📡 **Internet das Coisas** (IoT)](./Internet_das_Coisas/README.md)
+- [🎨 **Programação Front-End** (PFE)](./Programacao_Front_End/README.md)
+- [📱 **Programação para Dispositivos Móveis** (PDM)](./Programacao_Dispositivos_Moveis/README.md)
+- [🧪 **Testes de Software** (TS)](./Testes_Software/README.md)
+- [📋 **Projetos de Software** (PS)](./Projetos_Software/README.md)
+
+### 📂 Estrutura do Repositório
+
+```
+I4DS-2025/
+├── Internet_das_Coisas/
+│   ├── 01_Pisca_Led.ino
+│   ├── 02_Semaforo.ino
+│   ├── 03_Funcao_Millis.ino
+│   ├── 04_Millis_Interrupcao.ino
+│   ├── 05_DHT22_Temperatura_Umidade.ino
+│   ├── 06_LED_RGB_Potenciometro.ino
+│   ├── 07_Joystick_Display_Oled_Botoes.ino
+│   ├── README.md
+│   └── img/
+│       ├── 01_Pisca_Led.png
+│       ├── 02_Semaforo.png
+│       ├── 03_Funcao_Millis.png
+│       ├── 04_Millis_Interrupcao.png
+│       ├── 05_DHT22_Temperatura_Umidade.png
+│       ├── 06_LED_RGB_Potenciometro.png
+│       └── 07_Joystick_Display_Oled_Botoes.png
+├── Programacao_Dispositivos_Moveis/
+│   └── README.md
+├── Programacao_Front_End/
+│   └── README.md
+├── Projetos_Software/
+│   └── README.md
+├── Testes_Software/
+│   └── README.md
+└── README.md
+```
+
 ### 📖 Unidades Curriculares
 
 #### 1. [Internet das Coisas (IoT)](./Internet_das_Coisas)
@@ -114,7 +154,6 @@ O 4º semestre do curso Técnico em Desenvolvimento de Sistemas do SENAI-SP é d
 #### Critérios de Avaliação
 
 - **Projetos Práticos**
-- **Provas Teóricas**
 - **Atividades Colaborativas**
 - **Participação e Frequência**
 
