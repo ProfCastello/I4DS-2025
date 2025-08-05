@@ -8,279 +8,619 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Keyboard,
+  useColorScheme,
+  ScrollView,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 
 // Importa a variável de ambiente do arquivo .env
 import { AWESOME_API_KEY } from "@env";
 
-export default function App() {
-  // O valor em reais agora será armazenado como um número inteiro (centavos)
-  // Ex: R$ 10,50 será armazenado como 1050
-  const [valorEmReais, setValorEmReais] = useState(0);
-  const [cotacaoDolar, setCotacaoDolar] = useState(0);
-  const [cotacaoEuro, setCotacaoEuro] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [resultadoDolar, setResultadoDolar] = useState(0);
-  const [resultadoEuro, setResultadoEuro] = useState(0);
+// Lista de moedas disponíveis para seleção
+const CURRENCIES = [
+  { code: "BRL", name: "Real Brasileiro", symbol: "R$" },
+  { code: "USD", name: "Dólar Americano", symbol: "$" },
+  { code: "EUR", name: "Euro", symbol: "€" },
+  { code: "GBP", name: "Libra Esterlina", symbol: "£" },
+  { code: "JPY", name: "Iene Japonês", symbol: "¥" },
+  { code: "CAD", name: "Dólar Canadense", symbol: "C$" },
+  { code: "AUD", name: "Dólar Australiano", symbol: "A$" },
+];
 
-  // Usamos useRef para ter uma referência direta ao componente TextInput
+export default function App() {
+  const [fromCurrencyCode, setFromCurrencyCode] = useState("BRL");
+  const [toCurrencyCode, setToCurrencyCode] = useState("USD");
+  const [fromAmount, setFromAmount] = useState(0);
+  const [conversionRate, setConversionRate] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [convertedAmount, setConvertedAmount] = useState(0);
+  const [showResults, setShowResults] = useState(false);
+
   const inputRef = useRef(null);
 
+  const systemColorScheme = useColorScheme();
+  const [appTheme, setAppTheme] = useState(systemColorScheme || "light");
+
   useEffect(() => {
-    fetchCotacoes();
-  }, []);
+    if (systemColorScheme) {
+      setAppTheme(systemColorScheme);
+    }
+  }, [systemColorScheme]);
 
-  const fetchCotacoes = async () => {
-    // --- INÍCIO DA INTEGRAÇÃO COM AWESOME API ---
-    // A Awesome API pode ser usada sem chave para um limite básico (cache de 1 minuto).
-    // Para mais requisições ou dados em tempo real sem cache, você pode precisar de uma API Key.
-    // Obtenha sua chave em https://awesomeapi.com.br/
+  useEffect(() => {
+    fetchConversionRate();
+  }, [fromCurrencyCode, toCurrencyCode]);
 
-    // A API_KEY agora é lida do arquivo .env
+  const fetchConversionRate = async () => {
+    if (
+      !fromCurrencyCode ||
+      !toCurrencyCode ||
+      fromCurrencyCode === toCurrencyCode
+    ) {
+      setConversionRate(1);
+      setLoading(false);
+      return;
+    }
+
     const API_KEY_VALUE = AWESOME_API_KEY;
 
-    // Constrói a URL da API. Se houver uma chave, ela é adicionada como parâmetro.
     const API_URL =
       API_KEY_VALUE && API_KEY_VALUE !== "SUA_CHAVE_AQUI"
-        ? `https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL?token=${API_KEY_VALUE}`
-        : "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL";
+        ? `https://economia.awesomeapi.com.br/json/last/${fromCurrencyCode}-${toCurrencyCode}?token=${API_KEY_VALUE}`
+        : `https://economia.awesomeapi.com.br/json/last/${fromCurrencyCode}-${toCurrencyCode}`;
 
     try {
       setLoading(true);
-
       const response = await fetch(API_URL);
-
       if (!response.ok) {
-        // Se a resposta não for OK, tentamos extrair a mensagem de erro da API
-        // A Awesome API pode não retornar um JSON de erro tão detalhado quanto outras.
-        throw new Error(`Erro ao buscar as cotações: ${response.status}`);
+        throw new Error(`Erro ao buscar a cotação: ${response.status}`);
       }
-
       const data = await response.json();
-
-      // Verifica se a API retornou os dados esperados
-      if (data.USDBRL && data.EURBRL) {
-        const dolar = parseFloat(data.USDBRL.high);
-        const euro = parseFloat(data.EURBRL.high);
-
-        setCotacaoDolar(dolar);
-        setCotacaoEuro(euro);
+      const pairKey = `${fromCurrencyCode}${toCurrencyCode}`;
+      if (data[pairKey] && data[pairKey].high) {
+        const rate = parseFloat(data[pairKey].high);
+        setConversionRate(rate);
       } else {
-        throw new Error("Dados de cotação inválidos recebidos da API.");
+        throw new Error(
+          "Dados de cotação inválidos recebidos da API para o par selecionado."
+        );
       }
     } catch (error) {
-      console.error("Erro na busca de cotações:", error);
+      console.error("Erro na busca de cotação:", error);
       Alert.alert(
         "Erro",
-        `Não foi possível buscar as cotações. Detalhes: ${error.message}. Verifique sua conexão com a internet ou sua API Key (se estiver usando).`
+        `Não foi possível buscar a cotação para ${fromCurrencyCode}/${toCurrencyCode}. Detalhes: ${error.message}.`
       );
+      setConversionRate(0);
     } finally {
       setLoading(false);
     }
-    // --- FIM DA INTEGRAÇÃO COM AWESOME API ---
   };
 
-  // Função para formatar o valor monetário para exibição
-  const formatCurrency = (value) => {
-    // Divide por 100 para obter o valor em reais (de centavos para reais)
-    // Usa toFixed(2) para garantir duas casas decimais
-    // Replace '.' por ',' para o formato brasileiro
+  const formatAmount = (value) => {
     return (value / 100).toFixed(2).replace(".", ",");
   };
 
-  // Função para lidar com a mudança de texto no input
-  const handleValueChange = (text) => {
-    // Remove tudo que não for número (apenas dígitos 0-9)
+  const handleAmountChange = (text) => {
     const cleanedText = text.replace(/[^0-9]/g, "");
-
-    // Se o texto limpo estiver vazio, o valor é 0 centavos.
     if (cleanedText === "") {
-      setValorEmReais(0);
+      setFromAmount(0);
+      setShowResults(false);
       return;
     }
-
-    // Limita o número de dígitos para evitar valores muito grandes
-    // Ex: se o máximo for 999.999.999,99, então o inteiro máximo é 99999999999
-    // 11 dígitos para um valor até 99.999.999,99 (sem contar a vírgula e os centavos)
     if (cleanedText.length > 11) {
       return;
     }
-
-    // Converte o texto limpo para um número inteiro (representando centavos).
     const numericValue = parseInt(cleanedText, 10);
-
-    // Atualiza o estado.
-    setValorEmReais(numericValue);
+    setFromAmount(numericValue);
+    setShowResults(false);
   };
 
-  const converterMoeda = () => {
-    // O valor já está em centavos, então dividimos por 100 para a conversão
-    const valor = valorEmReais / 100;
-
-    if (isNaN(valor) || valor <= 0) {
-      Alert.alert("Erro", "Por favor, digite um valor válido em Reais.");
+  const convertCurrency = () => {
+    Keyboard.dismiss();
+    const amountInFromCurrency = fromAmount / 100;
+    if (isNaN(amountInFromCurrency) || amountInFromCurrency <= 0) {
+      Alert.alert("Erro", "Por favor, digite um valor válido.");
+      setShowResults(false);
       return;
     }
-
-    if (cotacaoDolar === 0 || cotacaoEuro === 0) {
+    if (conversionRate === 0) {
       Alert.alert(
         "Erro",
-        "As cotações ainda não foram carregadas. Tente novamente em alguns segundos."
+        "A cotação para as moedas selecionadas ainda não foi carregada ou está inválida. Tente novamente em alguns segundos."
       );
+      setShowResults(false);
       return;
     }
-
-    const dolarConvertido = valor / cotacaoDolar;
-    const euroConvertido = valor / cotacaoEuro;
-
-    setResultadoDolar(dolarConvertido.toFixed(2));
-    setResultadoEuro(euroConvertido.toFixed(2));
+    const result = amountInFromCurrency * conversionRate;
+    setConvertedAmount(result.toFixed(2));
+    setShowResults(true);
   };
+
+  const handleClear = () => {
+    setFromAmount(0);
+    setConvertedAmount(0);
+    setShowResults(false);
+    Keyboard.dismiss();
+  };
+
+  const getCurrencySymbol = (code) => {
+    const currency = CURRENCIES.find((c) => c.code === code);
+    return currency ? currency.symbol : "";
+  };
+
+  const toggleTheme = () => {
+    setAppTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+  };
+
+  const themeColors = getThemeColors(appTheme);
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007bff" />
-        <Text style={styles.loadingText}>Buscando cotações...</Text>
+      <View
+        style={[
+          baseStyles.loadingContainer,
+          { backgroundColor: themeColors.loadingBg },
+        ]}
+      >
+        <ActivityIndicator size="large" color={themeColors.buttonBg} />
+        <Text
+          style={[
+            baseStyles.loadingText,
+            { color: themeColors.loadingTextColor },
+          ]}
+        >
+          Buscando cotação...
+        </Text>
       </View>
     );
   }
 
-  // Calcula a posição do cursor para sempre estar no final do texto formatado.
-  // Isso é crucial para o comportamento de input monetário.
-  const formattedValue = formatCurrency(valorEmReais);
-  const cursorPosition = formattedValue.length;
+  const formattedFromAmount = formatAmount(fromAmount);
+  const cursorPosition = formattedFromAmount.length;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Conversor de Moedas</Text>
+    <View
+      style={[
+        baseStyles.container,
+        { backgroundColor: themeColors.containerBg },
+      ]}
+    >
+      <ScrollView
+        contentContainerStyle={baseStyles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text
+          style={[
+            baseStyles.title,
+            {
+              color: themeColors.titleColor,
+              textShadowColor: themeColors.titleShadowColor,
+            },
+          ]}
+        >
+          Conversor de Moedas
+        </Text>
 
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Valor em R$</Text>
-        <TextInput
-          ref={inputRef} // Atribui a referência ao TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          value={formattedValue} // Exibe o valor formatado para o usuário
-          onChangeText={handleValueChange} // Usa a nova função de tratamento
-          // Controla a posição do cursor: sempre no final do texto
-          selection={{ start: cursorPosition, end: cursorPosition }}
-          // Desabilita a seleção automática de texto ao focar (pode ajudar a evitar o problema)
-          selectTextOnFocus={false}
-        />
-      </View>
+        <View
+          style={[
+            baseStyles.card,
+            {
+              backgroundColor: themeColors.cardBg,
+              shadowColor: themeColors.cardShadow,
+            },
+          ]}
+        >
+          {/* Seletor de Moeda de Origem */}
+          <Text style={[baseStyles.label, { color: themeColors.labelColor }]}>
+            Converter de:
+          </Text>
+          <View
+            style={[
+              baseStyles.pickerContainer,
+              {
+                borderColor: themeColors.inputBorder,
+                backgroundColor: themeColors.inputBg,
+              },
+            ]}
+          >
+            <Picker
+              selectedValue={fromCurrencyCode}
+              onValueChange={(itemValue) => setFromCurrencyCode(itemValue)}
+              style={[baseStyles.picker, { color: themeColors.inputColor }]}
+            >
+              {CURRENCIES.map((currency) => (
+                <Picker.Item
+                  key={currency.code}
+                  label={`${currency.name} (${currency.code})`}
+                  value={currency.code}
+                />
+              ))}
+            </Picker>
+          </View>
 
-      <TouchableOpacity style={styles.button} onPress={converterMoeda}>
-        <Text style={styles.buttonText}>Converter</Text>
+          {/* Input do Valor */}
+          <View style={baseStyles.inputContainer}>
+            <Text style={[baseStyles.label, { color: themeColors.labelColor }]}>
+              Valor ({getCurrencySymbol(fromCurrencyCode)})
+            </Text>
+            <TextInput
+              ref={inputRef}
+              style={[
+                baseStyles.input,
+                {
+                  borderColor: themeColors.inputBorder,
+                  backgroundColor: themeColors.inputBg,
+                  color: themeColors.inputColor,
+                },
+              ]}
+              keyboardType="numeric"
+              value={formattedFromAmount}
+              onChangeText={handleAmountChange}
+              selection={{ start: cursorPosition, end: cursorPosition }}
+              selectTextOnFocus={false}
+            />
+          </View>
+
+          {/* Seletor de Moeda de Destino */}
+          <Text style={[baseStyles.label, { color: themeColors.labelColor }]}>
+            Converter para:
+          </Text>
+          <View
+            style={[
+              baseStyles.pickerContainer,
+              {
+                borderColor: themeColors.inputBorder,
+                backgroundColor: themeColors.inputBg,
+              },
+            ]}
+          >
+            <Picker
+              selectedValue={toCurrencyCode}
+              onValueChange={(itemValue) => setToCurrencyCode(itemValue)}
+              style={[baseStyles.picker, { color: themeColors.inputColor }]}
+            >
+              {CURRENCIES.map((currency) => (
+                <Picker.Item
+                  key={currency.code}
+                  label={`${currency.name} (${currency.code})`}
+                  value={currency.code}
+                />
+              ))}
+            </Picker>
+          </View>
+
+          <View style={baseStyles.buttonGroup}>
+            <TouchableOpacity
+              style={[
+                baseStyles.button,
+                { backgroundColor: themeColors.buttonBg },
+              ]}
+              onPress={convertCurrency}
+            >
+              <Text style={baseStyles.buttonText}>Converter</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                baseStyles.button,
+                baseStyles.clearButton,
+                { backgroundColor: themeColors.clearButtonBg },
+              ]}
+              onPress={handleClear}
+            >
+              <Text style={baseStyles.buttonText}>Limpar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {showResults && (
+          <View
+            style={[
+              baseStyles.card,
+              {
+                backgroundColor: themeColors.cardBg,
+                shadowColor: themeColors.cardShadow,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                baseStyles.resultTitle,
+                { color: themeColors.resultTitleColor },
+              ]}
+            >
+              Resultado da Conversão
+            </Text>
+            <Text
+              style={[
+                baseStyles.convertedValueText,
+                { color: themeColors.convertedValueTextColor },
+              ]}
+            >
+              <Text style={{ fontWeight: "bold" }}>
+                {getCurrencySymbol(fromCurrencyCode)} {formatAmount(fromAmount)}
+              </Text>
+              <Text> equivalem a:</Text>
+            </Text>
+            <Text
+              style={[
+                baseStyles.finalResultText,
+                { color: themeColors.resultTextColor },
+              ]}
+            >
+              <Text
+                style={[
+                  baseStyles.currencySymbol,
+                  { color: themeColors.currencySymbolColor },
+                ]}
+              >
+                {getCurrencySymbol(toCurrencyCode)}
+              </Text>
+              {convertedAmount} {toCurrencyCode}
+            </Text>
+          </View>
+        )}
+
+        <View
+          style={[
+            baseStyles.cotacaoInfoContainer,
+            {
+              backgroundColor: themeColors.cotacaoInfoBg,
+              borderTopColor: themeColors.cotacaoInfoBorder,
+              shadowColor: themeColors.cardShadow,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              baseStyles.cotacaoInfoTitle,
+              { color: themeColors.cotacaoInfoTitleColor },
+            ]}
+          >
+            Cotações Atuais:
+          </Text>
+          <Text
+            style={[
+              baseStyles.cotacaoInfoText,
+              { color: themeColors.cotacaoInfoTextColor },
+            ]}
+          >
+            1 USD = R$ {conversionRate.toFixed(4)}
+            {/* Ajustado para usar conversionRate */}
+          </Text>
+          <Text
+            style={[
+              baseStyles.cotacaoInfoText,
+              { color: themeColors.cotacaoInfoTextColor },
+            ]}
+          >
+            1 EUR = R$ {conversionRate.toFixed(4)}
+            {/* Ajustado para usar conversionRate */}
+          </Text>
+        </View>
+
+        {/* Indicador visual do tema para depuração (agora dentro do ScrollView) */}
+        <Text
+          style={[
+            baseStyles.themeIndicator,
+            { color: themeColors.loadingTextColor },
+          ]}
+        >
+          Tema detectado pelo sistema: {systemColorScheme || "Não detectado"}
+        </Text>
+      </ScrollView>
+
+      {/* Botão para alternar o tema manualmente (fixo na parte inferior) */}
+      <TouchableOpacity
+        style={[
+          baseStyles.themeToggleButton,
+          {
+            backgroundColor: themeColors.buttonBg,
+            position: "absolute",
+            bottom: 20,
+            left: 20,
+            right: 20,
+          },
+        ]}
+        onPress={toggleTheme}
+      >
+        <Text style={baseStyles.buttonText}>
+          Alternar Tema ({appTheme === "light" ? "Claro" : "Escuro"})
+        </Text>
       </TouchableOpacity>
 
-      <View style={styles.resultContainer}>
-        <Text style={styles.resultTitle}>Resultados</Text>
-        <Text style={styles.resultText}>Dólar: $ {resultadoDolar}</Text>
-        <Text style={styles.resultText}>Euro: € {resultadoEuro}</Text>
-      </View>
-
-      <View style={styles.cotacaoInfoContainer}>
-        <Text style={styles.cotacaoInfoTitle}>Cotações Atuais:</Text>
-        <Text style={styles.cotacaoInfoText}>
-          1 USD = R$ {cotacaoDolar.toFixed(4)}
-        </Text>
-        <Text style={styles.cotacaoInfoText}>
-          1 EUR = R$ {cotacaoEuro.toFixed(4)}
-        </Text>
-      </View>
-
-      <StatusBar style="auto" />
+      <StatusBar style={appTheme === "dark" ? "light" : "dark"} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#f5f5f5",
-    justifyContent: "center",
+    // Removido padding aqui para ser aplicado no scrollViewContent
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20, // Adicionado padding horizontal aqui
+    paddingVertical: 20, // Mantido padding vertical aqui
+    paddingBottom: 100,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "bold",
-    color: "#333",
     textAlign: "center",
     marginBottom: 40,
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  card: {
+    borderRadius: 15,
+    padding: 25,
+    marginBottom: 30,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2, // Aumentado para melhor visibilidade
+    shadowRadius: 8, // Aumentado para melhor visibilidade
+    elevation: 10, // Aumentado para melhor visibilidade
   },
   inputContainer: {
     marginBottom: 20,
   },
   label: {
     fontSize: 18,
-    color: "#555",
-    marginBottom: 5,
+    marginBottom: 8,
+    fontWeight: "600",
   },
   input: {
-    borderColor: "#ccc",
     borderWidth: 1,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 15,
-    fontSize: 16,
-    textAlign: "right", // Alinha o texto para a direita
+    borderRadius: 10,
+    padding: 18,
+    fontSize: 22,
+    textAlign: "right",
+    fontWeight: "bold",
+  },
+  buttonGroup: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 10,
   },
   button: {
-    backgroundColor: "#007BFF",
-    padding: 15,
-    borderRadius: 8,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 10,
     alignItems: "center",
-    marginBottom: 20,
+    flex: 1,
+    marginHorizontal: 5,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   buttonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
   },
-  resultContainer: {
-    marginTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#ccc",
-    paddingTop: 20,
-  },
   resultTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 15,
     textAlign: "center",
   },
-  resultText: {
+  convertedValueText: {
     fontSize: 18,
     textAlign: "center",
-    marginBottom: 5,
+    marginBottom: 10,
+  },
+  resultText: {
+    fontSize: 20,
+    textAlign: "center",
+    marginBottom: 8,
+    fontWeight: "600",
+  },
+  finalResultText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 10,
+  },
+  currencySymbol: {
+    fontWeight: "bold",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#555",
   },
   cotacaoInfoContainer: {
-    marginTop: 30,
+    marginTop: 20,
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: "#eee",
     alignItems: "center",
+    borderRadius: 15,
+    padding: 15,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15, // Aumentado para melhor visibilidade
+    shadowRadius: 4, // Aumentado para melhor visibilidade
+    elevation: 6, // Aumentado para melhor visibilidade
   },
   cotacaoInfoTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#777",
     marginBottom: 5,
   },
   cotacaoInfoText: {
     fontSize: 15,
-    color: "#888",
+  },
+  themeIndicator: {
+    textAlign: "center",
+    fontSize: 12,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  themeToggleButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderRadius: 10,
+    marginBottom: 20,
+    overflow: "hidden",
+  },
+  picker: {
+    height: 50,
+    width: "100%",
   },
 });
+
+const getThemeColors = (colorScheme) => {
+  const isDark = colorScheme === "dark";
+  return {
+    containerBg: isDark ? "#2c3e50" : "#e0f7fa",
+    titleColor: isDark ? "#ecf0f1" : "#00796b",
+    titleShadowColor: isDark
+      ? "rgba(255, 255, 255, 0.1)"
+      : "rgba(0, 0, 0, 0.1)",
+    cardBg: isDark ? "#34495e" : "#ffffff",
+    cardShadow: isDark ? "rgba(255,255,255,0.2)" : "#000",
+    labelColor: isDark ? "#bdc3c7" : "#424242",
+    inputBorder: isDark ? "#5c6e7f" : "#b0bec5",
+    inputBg: isDark ? "#4a627a" : "#fcfcfc",
+    inputColor: isDark ? "#ecf0f1" : "#333",
+    buttonBg: isDark ? "#1abc9c" : "#009688",
+    clearButtonBg: isDark ? "#e74c3c" : "#ef5350",
+    resultTitleColor: isDark ? "#1abc9c" : "#00796b",
+    convertedValueTextColor: isDark ? "#bdc3c7" : "#555",
+    resultTextColor: isDark ? "#ecf0f1" : "#333",
+    currencySymbolColor: isDark ? "#1abc9c" : "#00796b",
+    loadingBg: isDark ? "#2c3e50" : "#e0f7fa",
+    loadingTextColor: isDark ? "#bdc3c7" : "#555",
+    cotacaoInfoBg: isDark ? "#34495e" : "#ffffff",
+    cotacaoInfoBorder: isDark ? "#4a627a" : "#b2dfdb",
+    cotacaoInfoTitleColor: isDark ? "#1abc9c" : "#4db6ac",
+    cotacaoInfoTextColor: isDark ? "#bdc3c7" : "#616161",
+  };
+};
