@@ -1,8 +1,33 @@
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, TextInput, Touchable, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  Touchable,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function App() {
-  // Adicionaremos a lógica de conversão de moedas aqui
+  const [valorEmReais, setValorEmReais] = useState("");
+  const [cotacaoDolar, setCotacaoDolar] = useState(0);
+  const [cotacaoEuro, setCotacaoEuro] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // useEffect será usado para buscar a cotação da API
+  // Ele executa o código dentro dele quando o componente é renderizado
+  useEffect(() => {
+    fetchCotacoes();
+  }, []); // O array vazio [] garante que a busca seja feita apenas uma vez, na montagem do componente.
+
+  const fetchCotacoes = async () => {
+    // Lógica para buscar as cotações do Dólar e Euro
+  };
+
+  const converterMoeda = () => {
+    // Lógica para converter o valor em Reais para Dólar e Euro
+  };
 
   return (
     <View style={styles.container}>
