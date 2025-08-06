@@ -10,22 +10,51 @@ import {
   Alert,
   Keyboard,
   useColorScheme,
-  ScrollView, // Para o tema claro/escuro
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function App() {
   const [tasks, setTasks] = useState([]); // Estado para armazenar a lista de tarefas
   const [newTask, setNewTask] = useState(""); // Estado para o texto da nova tarefa
 
   const systemColorScheme = useColorScheme();
-  const [appTheme, setAppTheme] = useState(systemColorScheme || "light");
+  const [appTheme, setAppTheme] = useState("dark"); // Define o tema padrão como "dark"
 
   // Efeito para atualizar o tema do app se o tema do sistema mudar
   useEffect(() => {
-    if (systemColorScheme) {
+    if (systemColorScheme && appTheme !== "dark") {
       setAppTheme(systemColorScheme);
     }
   }, [systemColorScheme]);
+
+  // Carrega as tarefas salvas ao iniciar o aplicativo
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const savedTasks = await AsyncStorage.getItem("tasks");
+        if (savedTasks) {
+          setTasks(JSON.parse(savedTasks));
+        }
+      } catch (error) {
+        console.error("Erro ao carregar tarefas:", error);
+      }
+    };
+
+    loadTasks();
+  }, []);
+
+  // Salva as tarefas sempre que elas forem alteradas
+  useEffect(() => {
+    const saveTasks = async () => {
+      try {
+        await AsyncStorage.setItem("tasks", JSON.stringify(tasks));
+      } catch (error) {
+        console.error("Erro ao salvar tarefas:", error);
+      }
+    };
+
+    saveTasks();
+  }, [tasks]);
 
   // Função para adicionar uma nova tarefa
   const addTask = () => {
@@ -103,7 +132,7 @@ export default function App() {
           { backgroundColor: themeColors.deleteButtonBg },
         ]}
       >
-        <Text style={baseStyles.deleteButtonText}>X</Text>
+        <Text style={baseStyles.deleteButtonText}>🗑️</Text>
       </TouchableOpacity>
     </View>
   );
@@ -146,64 +175,61 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        contentContainerStyle={baseStyles.scrollViewContent}
-        showsVerticalScrollIndicator={false}
+      {/* Card de entrada de nova tarefa */}
+      <View
+        style={[
+          baseStyles.card,
+          {
+            backgroundColor: themeColors.cardBg,
+            shadowColor: themeColors.cardShadow,
+          },
+        ]}
       >
-        <View
+        <TextInput
           style={[
-            baseStyles.card,
+            baseStyles.input,
             {
-              backgroundColor: themeColors.cardBg,
-              shadowColor: themeColors.cardShadow,
+              borderColor: themeColors.inputBorder,
+              backgroundColor: themeColors.inputBg,
+              color: themeColors.inputColor,
             },
           ]}
-        >
-          <TextInput
-            style={[
-              baseStyles.input,
-              {
-                borderColor: themeColors.inputBorder,
-                backgroundColor: themeColors.inputBg,
-                color: themeColors.inputColor,
-              },
-            ]}
-            placeholder="Adicionar nova tarefa..."
-            placeholderTextColor={themeColors.placeholderTextColor}
-            value={newTask}
-            onChangeText={setNewTask}
-            onSubmitEditing={addTask} // Adiciona tarefa ao pressionar Enter no teclado
-          />
-          <TouchableOpacity
-            style={[
-              baseStyles.addButton,
-              { backgroundColor: themeColors.buttonBg },
-            ]}
-            onPress={addTask}
-          >
-            <Text style={baseStyles.buttonText}>Adicionar</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Lista de Tarefas */}
-        <FlatList
-          data={tasks}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={() => (
-            // Componente exibido quando a lista está vazia
-            <Text
-              style={[
-                baseStyles.emptyListText,
-                { color: themeColors.placeholderTextColor },
-              ]}
-            >
-              Nenhuma tarefa adicionada ainda.
-            </Text>
-          )}
-          contentContainerStyle={baseStyles.flatListContent}
+          placeholder="Adicionar nova tarefa..."
+          placeholderTextColor={themeColors.placeholderTextColor}
+          value={newTask}
+          onChangeText={setNewTask}
+          onSubmitEditing={addTask} // Adiciona tarefa ao pressionar Enter no teclado
         />
-      </ScrollView>
+        <TouchableOpacity
+          style={[
+            baseStyles.addButton,
+            { backgroundColor: themeColors.buttonBg },
+          ]}
+          onPress={addTask}
+        >
+          <Text style={baseStyles.buttonText}>Adicionar</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Lista de Tarefas */}
+      <FlatList
+        data={tasks}
+        style={baseStyles.FlatList}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={() => (
+          // Componente exibido quando a lista está vazia
+          <Text
+            style={[
+              baseStyles.emptyListText,
+              { color: themeColors.placeholderTextColor },
+            ]}
+          >
+            Nenhuma tarefa adicionada ainda.
+          </Text>
+        )}
+        contentContainerStyle={baseStyles.flatListContent}
+      />
 
       <StatusBar style={appTheme === "dark" ? "light" : "dark"} />
     </View>
@@ -246,6 +272,7 @@ const baseStyles = StyleSheet.create({
     paddingBottom: 20, // Ajuste para o final da lista
   },
   card: {
+    margin: 20,
     borderRadius: 15,
     padding: 20,
     marginBottom: 20,
@@ -281,10 +308,14 @@ const baseStyles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 10,
+    marginHorizontal: 15, // Espaçamento lateral
+    marginTop: 10, // Espaçamento no topo
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 5,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
   },
   taskTextContainer: {
     flex: 1, // Permite que o texto ocupe o espaço disponível
@@ -304,6 +335,7 @@ const baseStyles = StyleSheet.create({
   },
   deleteButtonText: {
     color: "#fff",
+    fontSize: 22,
     fontWeight: "bold",
   },
   emptyListText: {
@@ -331,6 +363,6 @@ const getThemeColors = (colorScheme) => {
     buttonBg: isDark ? "#1abc9c" : "#009688",
     taskItemBg: isDark ? "#4a627a" : "#ffffff",
     taskTextColor: isDark ? "#ecf0f1" : "#333",
-    deleteButtonBg: isDark ? "#e74c3c" : "#ef5350",
+    // deleteButtonBg: isDark ? "#e74c3c" : "#ef5350",
   };
 };
