@@ -40,7 +40,7 @@ export default function App() {
   const inputRef = useRef(null);
 
   const systemColorScheme = useColorScheme();
-  const [appTheme, setAppTheme] = useState(systemColorScheme || "light");
+  const [appTheme, setAppTheme] = useState(systemColorScheme || "dark");
 
   useEffect(() => {
     if (systemColorScheme) {
@@ -70,14 +70,35 @@ export default function App() {
         ? `https://economia.awesomeapi.com.br/json/last/${fromCurrencyCode}-${toCurrencyCode}?token=${API_KEY_VALUE}`
         : `https://economia.awesomeapi.com.br/json/last/${fromCurrencyCode}-${toCurrencyCode}`;
 
+    // Adiciona um AbortController para timeout da requisição
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 10000); // Aborta a requisição após 10 segundos
+
     try {
       setLoading(true);
-      const response = await fetch(API_URL);
+      console.log("Fetching API URL:", API_URL); // Loga a URL da API
+      const response = await fetch(API_URL, { signal: controller.signal }); // Adiciona o sinal de aborto
+
+      clearTimeout(id); // Limpa o timeout se a requisição responder antes
+
+      console.log("API Response Status:", response.status); // Loga o status da resposta
       if (!response.ok) {
-        throw new Error(`Erro ao buscar a cotação: ${response.status}`);
+        const errorText = await response.text(); // Tenta pegar o texto do erro da resposta
+        console.error("API Response not OK. Text:", errorText); // Loga o texto do erro
+        throw new Error(
+          `Erro ao buscar a cotação: ${response.status} - ${errorText.substring(
+            0,
+            100
+          )}...`
+        );
       }
+
       const data = await response.json();
+      console.log("API Response Data:", data); // Loga os dados da resposta
       const pairKey = `${fromCurrencyCode}${toCurrencyCode}`;
+      console.log("Pair Key:", pairKey); // Loga a chave do par
+      console.log("Data for Pair Key:", data[pairKey]); // Loga os dados para a chave do par
+
       if (data[pairKey] && data[pairKey].high) {
         const rate = parseFloat(data[pairKey].high);
         setConversionRate(rate);
@@ -87,10 +108,17 @@ export default function App() {
         );
       }
     } catch (error) {
+      clearTimeout(id); // Garante que o timeout seja limpo mesmo em caso de erro
       console.error("Erro na busca de cotação:", error);
+      let errorMessage = `Não foi possível buscar a cotação para ${fromCurrencyCode}/${toCurrencyCode}.`;
+      if (error.name === "AbortError") {
+        errorMessage += " A requisição demorou demais.";
+      } else {
+        errorMessage += ` Detalhes: ${error.message}.`;
+      }
       Alert.alert(
         "Erro",
-        `Não foi possível buscar a cotação para ${fromCurrencyCode}/${toCurrencyCode}. Detalhes: ${error.message}.`
+        `${errorMessage} Verifique sua conexão com a internet ou sua API Key.`
       );
       setConversionRate(0);
     } finally {
@@ -187,22 +215,41 @@ export default function App() {
         { backgroundColor: themeColors.containerBg },
       ]}
     >
-      <ScrollView
-        contentContainerStyle={baseStyles.scrollViewContent}
-        showsVerticalScrollIndicator={false}
+      {/* Topbar/Header do Aplicativo */}
+      <View
+        style={[baseStyles.topbar, { backgroundColor: themeColors.topbarBg }]}
       >
         <Text
           style={[
-            baseStyles.title,
-            {
-              color: themeColors.titleColor,
-              textShadowColor: themeColors.titleShadowColor,
-            },
+            baseStyles.topbarTitle,
+            { color: themeColors.topbarTitleColor },
           ]}
         >
           Conversor de Moedas
         </Text>
+        {/* Botão de alternar tema no Topbar */}
+        <TouchableOpacity
+          style={[
+            baseStyles.topbarThemeToggle,
+            { backgroundColor: themeColors.topbarThemeToggleBg },
+          ]}
+          onPress={toggleTheme}
+        >
+          <Text
+            style={[
+              baseStyles.topbarThemeToggleText,
+              { color: themeColors.topbarThemeToggleColor },
+            ]}
+          >
+            {appTheme === "light" ? "🌙" : "☀️"}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
+      <ScrollView
+        contentContainerStyle={baseStyles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View
           style={[
             baseStyles.card,
@@ -356,7 +403,7 @@ export default function App() {
                 ]}
               >
                 {getCurrencySymbol(toCurrencyCode)}
-              </Text>
+              </Text>{" "}
               {convertedAmount} {toCurrencyCode}
             </Text>
           </View>
@@ -378,7 +425,7 @@ export default function App() {
               { color: themeColors.cotacaoInfoTitleColor },
             ]}
           >
-            Cotações Atuais:
+            Cotação Atual:
           </Text>
           <Text
             style={[
@@ -386,49 +433,11 @@ export default function App() {
               { color: themeColors.cotacaoInfoTextColor },
             ]}
           >
-            1 USD = R$ {conversionRate.toFixed(4)}
-            {/* Ajustado para usar conversionRate */}
-          </Text>
-          <Text
-            style={[
-              baseStyles.cotacaoInfoText,
-              { color: themeColors.cotacaoInfoTextColor },
-            ]}
-          >
-            1 EUR = R$ {conversionRate.toFixed(4)}
-            {/* Ajustado para usar conversionRate */}
+            1 {fromCurrencyCode} = {getCurrencySymbol(toCurrencyCode)}{" "}
+            {conversionRate.toFixed(4)} {toCurrencyCode}
           </Text>
         </View>
-
-        {/* Indicador visual do tema para depuração (agora dentro do ScrollView) */}
-        <Text
-          style={[
-            baseStyles.themeIndicator,
-            { color: themeColors.loadingTextColor },
-          ]}
-        >
-          Tema detectado pelo sistema: {systemColorScheme || "Não detectado"}
-        </Text>
       </ScrollView>
-
-      {/* Botão para alternar o tema manualmente (fixo na parte inferior) */}
-      <TouchableOpacity
-        style={[
-          baseStyles.themeToggleButton,
-          {
-            backgroundColor: themeColors.buttonBg,
-            position: "absolute",
-            bottom: 20,
-            left: 20,
-            right: 20,
-          },
-        ]}
-        onPress={toggleTheme}
-      >
-        <Text style={baseStyles.buttonText}>
-          Alternar Tema ({appTheme === "light" ? "Claro" : "Escuro"})
-        </Text>
-      </TouchableOpacity>
 
       <StatusBar style={appTheme === "dark" ? "light" : "dark"} />
     </View>
@@ -438,13 +447,35 @@ export default function App() {
 const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
-    // Removido padding aqui para ser aplicado no scrollViewContent
+  },
+  topbar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.1)",
+  },
+  topbarTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  topbarThemeToggle: {
+    padding: 8,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  topbarThemeToggleText: {
+    fontSize: 20,
   },
   scrollViewContent: {
     flexGrow: 1,
-    paddingHorizontal: 20, // Adicionado padding horizontal aqui
-    paddingVertical: 20, // Mantido padding vertical aqui
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    paddingTop: 20,
   },
   title: {
     fontSize: 32,
@@ -462,9 +493,9 @@ const baseStyles = StyleSheet.create({
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.2, // Aumentado para melhor visibilidade
-    shadowRadius: 8, // Aumentado para melhor visibilidade
-    elevation: 10, // Aumentado para melhor visibilidade
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 10,
   },
   inputContainer: {
     marginBottom: 20,
@@ -553,9 +584,9 @@ const baseStyles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.15, // Aumentado para melhor visibilidade
-    shadowRadius: 4, // Aumentado para melhor visibilidade
-    elevation: 6, // Aumentado para melhor visibilidade
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 6,
   },
   cotacaoInfoTitle: {
     fontSize: 16,
@@ -572,17 +603,7 @@ const baseStyles = StyleSheet.create({
     marginBottom: 10,
   },
   themeToggleButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    // Removido estilos de posicionamento absoluto daqui
   },
   pickerContainer: {
     borderWidth: 1,
@@ -600,6 +621,10 @@ const getThemeColors = (colorScheme) => {
   const isDark = colorScheme === "dark";
   return {
     containerBg: isDark ? "#2c3e50" : "#e0f7fa",
+    topbarBg: isDark ? "#222f3e" : "#ffffff",
+    topbarTitleColor: isDark ? "#ecf0f1" : "#00796b",
+    topbarThemeToggleBg: isDark ? "#34495e" : "#e0e0e0",
+    topbarThemeToggleColor: isDark ? "#ecf0f1" : "#424242",
     titleColor: isDark ? "#ecf0f1" : "#00796b",
     titleShadowColor: isDark
       ? "rgba(255, 255, 255, 0.1)"
