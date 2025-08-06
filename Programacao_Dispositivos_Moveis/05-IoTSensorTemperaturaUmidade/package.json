@@ -1,5 +1,5 @@
 {
-  "name": "04-listadetarefas",
+  "name": "iot_sensor",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -9,13 +9,13 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-async-storage/async-storage": "^2.1.2",
     "expo": "~53.0.20",
-    "expo-linear-gradient": "^14.1.5",
     "expo-status-bar": "~2.2.3",
+    "paho-mqtt": "^1.1.0",
     "react": "19.0.0",
     "react-native": "0.79.5",
-    "expo-dev-client": "~5.2.4"
+    "react-native-paper": "^5.14.5"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

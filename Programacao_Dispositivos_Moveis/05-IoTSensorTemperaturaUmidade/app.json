@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "04-ListaDeTarefas",
-    "slug": "04-ListaDeTarefas",
+    "name": "IoT Sensor Temperatura Umidade",
+    "slug": "IoTSensorTemperaturaUmidade",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,17 +20,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.profcastello.app"
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "4a9bb05b-eb21-4f88-bb17-6c14c76b6665"
-      }
-    },
-    "owner": "profcastello"
+    }
   }
 }
