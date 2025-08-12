@@ -1,519 +1,536 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import SensorCard from "./components/SensorCard";
+import React, { useState, useEffect, useRef } from "react";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
+import mqtt from "mqtt";
 import {
-  ActivityIndicator,
   StyleSheet,
-  View,
-  useColorScheme,
-  ScrollView,
   Text,
-  Animated,
+  View,
+  ScrollView,
+  Dimensions,
+  StatusBar,
+  RefreshControl,
+  Alert,
 } from "react-native";
-import { StatusBar } from "expo-status-bar";
-import {
-  Provider as PaperProvider,
-  Card,
-  Title,
-  Paragraph,
-  Appbar,
-  IconButton,
-  Surface,
-  ProgressBar,
-  Chip,
-  DefaultTheme,
-  DarkTheme,
-} from "react-native-paper";
-import { Client } from "paho-mqtt";
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import { LinearGradient } from "expo-linear-gradient";
 
-// Hook personalizado para tema ultra-seguro
-const useSecureTheme = (initialDarkMode = false) => {
-  const [isDark, setIsDark] = useState(initialDarkMode);
-  const [isReady, setIsReady] = useState(false);
+// Polyfills para mqtt.js funcionar no React Native/Expo
+import { Buffer } from "buffer";
+import process from "process";
+import { decode, encode } from "base-64";
 
-  const theme = React.useMemo(() => {
-    // Cores base sempre disponíveis
-    const lightColors = {
-      primary: "#2196F3",
-      background: "#F8F9FA",
-      surface: "#FFFFFF",
-      text: "#212121",
-      success: "#4CAF50",
-      warning: "#FF9800",
-      error: "#F44336",
-      accent: "#FF5722",
-    };
+if (!global.Buffer) global.Buffer = Buffer;
+if (!global.process) global.process = process;
+if (!global.atob) global.atob = decode;
+if (!global.btoa) global.btoa = encode;
 
-    const darkColors = {
-      primary: "#64B5F6",
-      background: "#0D1117",
-      surface: "#161B22",
-      text: "#F0F6FC",
-      success: "#3FB950",
-      warning: "#D29922",
-      error: "#F85149",
-      accent: "#FF7043",
-    };
+const { width, height } = Dimensions.get("window");
 
-    const colors = isDark ? darkColors : lightColors;
-
-    // Garantir que sempre temos um tema válido
-    return {
-      dark: isDark,
-      colors: {
-        ...colors,
-        // Propriedades adicionais do Paper
-        onSurface: colors.text,
-        onBackground: colors.text,
-        disabled: isDark ? "#484F58" : "#9E9E9E",
-        placeholder: isDark ? "#8B949E" : "#757575",
-        backdrop: isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
-        notification: colors.error,
-      },
-    };
-  }, [isDark]);
-
-  const toggleTheme = useCallback(async () => {
-    const newMode = !isDark;
-    setIsDark(newMode);
-
-    try {
-      await AsyncStorage.setItem("theme", newMode ? "dark" : "light");
-    } catch (error) {
-      console.log("Erro ao salvar tema:", error);
-    }
-  }, [isDark]);
-
-  return { theme, isDark, isReady, setIsReady, toggleTheme };
-};
-
-export default function App() {
+const Main = () => {
+  const theme = useTheme();
   const [temperature, setTemperature] = useState(null);
   const [humidity, setHumidity] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [temperatureData, setTemperatureData] = useState([]);
+  const [humidityData, setHumidityData] = useState([]);
+  const [tempMin, setTempMin] = useState(null);
+  const [tempMax, setTempMax] = useState(null);
+  const [humMin, setHumMin] = useState(null);
+  const [humMax, setHumMax] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const colorScheme = useColorScheme();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  // Configuração MQTT usando mqtt.js (WebSocket)
+  const MQTT_URL = "ws://broker.hivemq.com:8000/mqtt";
+  const MQTT_TOPIC = "profcastello/temperatura";
+  const mqttClient = useRef(null);
+  // ...duplicado, removido...
 
-  // Usar o hook personalizado para tema seguro - iniciar sempre no modo dark
-  const { theme, isDark, isReady, setIsReady, toggleTheme } =
-    useSecureTheme(true);
-
-  // Inicialização
   useEffect(() => {
-    const initializeApp = async () => {
+    console.log(
+      `🔌 Tentando conectar ao broker MQTT (mqtt.js) em: ${MQTT_URL}`
+    );
+    const client = mqtt.connect(MQTT_URL);
+    mqttClient.current = client;
+
+    client.on("connect", () => {
+      setIsConnected(true);
+      client.subscribe(MQTT_TOPIC);
+      console.log("✅ Conectado ao broker MQTT (mqtt.js)!");
+    });
+
+    client.on("message", (topic, message) => {
       try {
-        // Carregar preferência de tema
-        const saved = await AsyncStorage.getItem("theme");
-        const shouldUseDark =
-          saved === "dark" || (!saved && colorScheme === "dark");
-
-        // Usar o toggle do hook se necessário
-        if (shouldUseDark !== isDark) {
-          toggleTheme();
+        const data = JSON.parse(message.toString());
+        if (
+          typeof data.temperatura === "number" &&
+          typeof data.umidade === "number"
+        ) {
+          updateSensorData(data.temperatura, data.umidade);
+        } else {
+          console.log(
+            "Mensagem recebida não contém dados esperados:",
+            message.toString()
+          );
         }
-
-        // Aguardar um frame para garantir que o tema seja aplicado
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        setIsReady(true);
-
-        // Animação
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }).start();
-      } catch (error) {
-        console.log("Erro na inicialização:", error);
-        setIsReady(true);
+      } catch (e) {
+        console.log("Mensagem recebida não é JSON válido:", message.toString());
       }
-    };
+    });
 
-    initializeApp();
-  }, [colorScheme, fadeAnim, isDark, toggleTheme, setIsReady]);
+    client.on("error", (err) => {
+      setIsConnected(false);
+      console.log("❌ Erro MQTT:", err.message);
+      Alert.alert("Erro MQTT", err.message);
+    });
 
-  // MQTT
-  useEffect(() => {
-    const client = new Client("broker.hivemq.com", 8000, `IoT_${Date.now()}`);
-
-    client.onConnectionLost = () => setIsConnected(false);
-
-    client.onMessageArrived = (message) => {
-      try {
-        const data = JSON.parse(message.payloadString);
-        if (data.temperatura && data.umidade) {
-          setTemperature(data.temperatura);
-          setHumidity(data.umidade);
-          setLastUpdate(new Date().toLocaleTimeString());
-        }
-      } catch (error) {
-        console.log("Erro:", error);
-      }
-    };
-
-    client.connect({
-      onSuccess: () => {
-        setIsConnected(true);
-        client.subscribe("profcastello/temperatura");
-      },
-      onFailure: () => setIsConnected(false),
+    client.on("close", () => {
+      setIsConnected(false);
+      console.log("Conexão MQTT fechada.");
     });
 
     return () => {
-      try {
-        if (client.isConnected()) client.disconnect();
-      } catch (error) {
-        console.log("Erro ao desconectar:", error);
-      }
+      client.end(true, () => {
+        console.log("MQTT desconectado.");
+      });
     };
   }, []);
 
-  const getTemperatureColor = (temp) => {
-    if (temp < 15) return "#2196F3";
-    if (temp < 25) return "#4CAF50";
-    if (temp < 30) return "#FF9800";
-    return "#F44336";
+  const updateSensorData = (temp, hum) => {
+    setTemperature(temp);
+    if (tempMin === null || temp < tempMin) setTempMin(temp);
+    if (tempMax === null || temp > tempMax) setTempMax(temp);
+    setHumidity(hum);
+    if (humMin === null || hum < humMin) setHumMin(hum);
+    if (humMax === null || hum > humMax) setHumMax(hum);
+    setTemperatureData((prev) => {
+      const newData = [...prev, temp];
+      return newData.length > 10 ? newData.slice(-10) : newData;
+    });
+    setHumidityData((prev) => {
+      const newData = [...prev, hum];
+      return newData.length > 10 ? newData.slice(-10) : newData;
+    });
+    setLastUpdate(new Date());
   };
 
-  // Verificação de segurança antes de renderizar
-  if (!theme || !theme.colors || !isReady) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F8F9FA",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      console.log("🔄 Atualizando dados...");
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    } catch (error) {
+      console.error("Erro durante refresh:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const formatTime = (date) => {
+    if (!date) return "--";
+    return date.toLocaleTimeString("pt-BR");
+  };
+
+  const getTemperatureProgress = () => {
+    if (temperature === null) return 0;
+    return Math.max(0, Math.min(100, ((temperature + 10) / 60) * 100));
+  };
+
+  const getHumidityProgress = () => {
+    return humidity || 0;
+  };
+
+  const ConnectionStatus = () => (
+    <View
+      style={[
+        styles.connectionStatus,
+        isConnected ? styles.connected : styles.disconnected,
+      ]}
+    >
+      <Text
+        style={[
+          styles.connectionText,
+          {
+            color: isConnected
+              ? theme.connectionConnected
+              : theme.connectionDisconnected,
+          },
+        ]}
       >
-        <ActivityIndicator size="large" color="#2196F3" />
-        <Text style={{ marginTop: 16, color: "#212121" }}>
-          Carregando tema...
-        </Text>
+        {isConnected ? "🟢 Conectado" : "🔴 Desconectado"}
+      </Text>
+    </View>
+  );
+
+  const Chart = () => (
+    <View style={styles.chartCard}>
+      <View style={styles.cardHeader}>
+        <View
+          style={[styles.icon, { backgroundColor: theme.iconBg || "#667eea" }]}
+        >
+          <Text style={styles.iconText}>📊</Text>
+        </View>
+        <Text style={styles.cardTitle}>Histórico (Últimas 10 leituras)</Text>
       </View>
-    );
-  }
+      <View style={styles.chart}>
+        <View style={styles.chartContainer}>
+          {temperatureData.length > 0 ? (
+            temperatureData.map((temp, index) => (
+              <View key={index} style={styles.chartBar}>
+                <View
+                  style={[
+                    styles.temperatureBar,
+                    {
+                      height: Math.max(5, temp * 2),
+                      backgroundColor: theme.chartTemp || "#ff6b6b",
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.humidityBar,
+                    {
+                      height: Math.max(5, (humidityData[index] || 0) * 1.5),
+                      backgroundColor: theme.chartHum || "#4ecdc4",
+                    },
+                  ]}
+                />
+                <Text style={styles.chartLabel}>{index + 1}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noDataText}>Aguardando dados...</Text>
+          )}
+        </View>
+        <View style={styles.chartLegend}>
+          <View style={styles.legendItem}>
+            <View
+              style={[
+                styles.legendColor,
+                { backgroundColor: theme.chartTemp || "#ff6b6b" },
+              ]}
+            />
+            <Text style={styles.legendText}>Temp</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View
+              style={[
+                styles.legendColor,
+                { backgroundColor: theme.chartHum || "#4ecdc4" },
+              ]}
+            />
+            <Text style={styles.legendText}>Umid</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
-    <PaperProvider theme={theme}>
-      <StatusBar style={isDark ? "light" : "dark"} />
-      <View
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
+    <LinearGradient
+      colors={
+        theme.mode === "dark" ? ["#23242a", "#181a20"] : ["#667eea", "#764ba2"]
+      }
+      style={[styles.container, { minHeight: "100%" }]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <StatusBar
+        barStyle={theme.mode === "dark" ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent
+      />
+
+      <ScrollView
+        contentContainerStyle={[styles.scrollContainer, { paddingTop: 70 }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.accent}
+          />
+        }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Appbar.Header style={{ backgroundColor: theme.colors.primary }}>
-          <Appbar.Content
-            title="🌡️ Dashboard IoT"
-            titleStyle={{ color: "#FFFFFF" }}
-          />
-          <Chip
-            icon={isConnected ? "wifi" : "wifi-off"}
-            textStyle={{
-              color: isConnected
-                ? isDark
-                  ? "#4CAF50"
-                  : "#2E7D32"
-                : isDark
-                ? "#F44336"
-                : "#C62828",
-              fontWeight: "600",
-            }}
-            style={{
-              borderColor: isConnected
-                ? isDark
-                  ? "#4CAF50"
-                  : "#2E7D32"
-                : isDark
-                ? "#F44336"
-                : "#C62828",
-              backgroundColor: isConnected
-                ? isDark
-                  ? "#4CAF5020"
-                  : "#E8F5E8"
-                : isDark
-                ? "#F4433620"
-                : "#FFEBEE",
-              marginRight: 8,
-            }}
-            mode="outlined"
+        <View style={[styles.header, { marginBottom: 35 }]}>
+          <Text
+            style={[
+              styles.title,
+              {
+                color: theme.text,
+                fontSize: 32,
+                fontWeight: "bold",
+                textAlign: "center",
+                textShadowColor:
+                  theme.mode === "dark" ? "#000" : "rgba(0,0,0,0.2)",
+                textShadowOffset: { width: 2, height: 2 },
+                textShadowRadius: 6,
+                letterSpacing: 1.2,
+              },
+            ]}
           >
-            {isConnected ? "Online" : "Offline"}
-          </Chip>
-          <IconButton
-            icon={isDark ? "weather-sunny" : "weather-night"}
-            iconColor="#FFFFFF"
-            onPress={toggleTheme}
-          />
-        </Appbar.Header>
+            🌡️ Dashboard IoT
+          </Text>
+          <View style={{ marginTop: 10 }}>
+            <ConnectionStatus />
+          </View>
+        </View>
 
-        <ScrollView style={styles.content}>
-          <Animated.View style={{ opacity: fadeAnim }}>
-            {/* Loading */}
-            {!temperature && (
-              <Card
-                style={[styles.card, { backgroundColor: theme.colors.surface }]}
-              >
-                <Card.Content style={styles.loadingContent}>
-                  <ActivityIndicator
-                    size="large"
-                    color={theme.colors.primary}
-                  />
-                  <Title
-                    style={[styles.loadingTitle, { color: theme.colors.text }]}
-                  >
-                    Carregando dados...
-                  </Title>
-                </Card.Content>
-              </Card>
-            )}
+        <SensorCard
+          title="Temperatura"
+          value={temperature}
+          unit="°C"
+          icon="🌡️"
+          progress={getTemperatureProgress()}
+          progressColor={theme.chartTemp}
+          min={tempMin}
+          max={tempMax}
+          theme={theme}
+        />
 
-            {/* Dados */}
-            {temperature && humidity && (
-              <Card
-                style={[styles.card, { backgroundColor: theme.colors.surface }]}
-              >
-                <Card.Content>
-                  <View style={styles.dataContainer}>
-                    {/* Temperatura */}
-                    <Surface
-                      style={[
-                        styles.dataCard,
-                        {
-                          backgroundColor:
-                            getTemperatureColor(temperature) + "20",
-                        },
-                      ]}
-                    >
-                      <IconButton
-                        icon="thermometer"
-                        size={28}
-                        iconColor={getTemperatureColor(temperature)}
-                      />
-                      <Title
-                        style={[styles.dataLabel, { color: theme.colors.text }]}
-                      >
-                        Temperatura
-                      </Title>
-                      <Text
-                        style={[
-                          styles.dataValue,
-                          { color: getTemperatureColor(temperature) },
-                        ]}
-                      >
-                        {temperature}°C
-                      </Text>
-                    </Surface>
+        <SensorCard
+          title="Umidade"
+          value={humidity}
+          unit="%"
+          icon="💧"
+          progress={getHumidityProgress()}
+          progressColor={theme.chartHum}
+          min={humMin}
+          max={humMax}
+          theme={theme}
+        />
 
-                    {/* Umidade */}
-                    <Surface
-                      style={[
-                        styles.dataCard,
-                        { backgroundColor: theme.colors.primary + "20" },
-                      ]}
-                    >
-                      <IconButton
-                        icon="water-percent"
-                        size={28}
-                        iconColor={theme.colors.primary}
-                      />
-                      <Title
-                        style={[styles.dataLabel, { color: theme.colors.text }]}
-                      >
-                        Umidade
-                      </Title>
-                      <Text
-                        style={[
-                          styles.dataValue,
-                          { color: theme.colors.primary },
-                        ]}
-                      >
-                        {humidity}%
-                      </Text>
-                      <ProgressBar
-                        progress={humidity / 100}
-                        color={theme.colors.primary}
-                        style={styles.progress}
-                      />
-                    </Surface>
-                  </View>
+        <Chart />
 
-                  {lastUpdate && (
-                    <Paragraph
-                      style={[styles.lastUpdate, { color: theme.colors.text }]}
-                    >
-                      Última atualização: {lastUpdate}
-                    </Paragraph>
-                  )}
-                </Card.Content>
-              </Card>
-            )}
-
-            {/* Status */}
-            <Card
-              style={[styles.card, { backgroundColor: theme.colors.surface }]}
-            >
-              <Card.Content>
-                <Title
-                  style={[styles.sectionTitle, { color: theme.colors.text }]}
-                >
-                  Status do Sistema
-                </Title>
-                <View style={styles.statusRow}>
-                  <View style={styles.statusItem}>
-                    <IconButton
-                      icon="battery"
-                      iconColor={theme.colors.success}
-                    />
-                    <Text
-                      style={[
-                        styles.statusValue,
-                        { color: theme.colors.success },
-                      ]}
-                    >
-                      85%
-                    </Text>
-                    <Text
-                      style={[styles.statusLabel, { color: theme.colors.text }]}
-                    >
-                      Bateria
-                    </Text>
-                  </View>
-                  <View style={styles.statusItem}>
-                    <IconButton icon="flash" iconColor={theme.colors.warning} />
-                    <Text
-                      style={[
-                        styles.statusValue,
-                        { color: theme.colors.warning },
-                      ]}
-                    >
-                      3.7V
-                    </Text>
-                    <Text
-                      style={[styles.statusLabel, { color: theme.colors.text }]}
-                    >
-                      Voltagem
-                    </Text>
-                  </View>
-                  <View style={styles.statusItem}>
-                    <IconButton
-                      icon="current-ac"
-                      iconColor={theme.colors.accent}
-                    />
-                    <Text
-                      style={[
-                        styles.statusValue,
-                        { color: theme.colors.accent },
-                      ]}
-                    >
-                      1.2A
-                    </Text>
-                    <Text
-                      style={[styles.statusLabel, { color: theme.colors.text }]}
-                    >
-                      Corrente
-                    </Text>
-                  </View>
-                </View>
-              </Card.Content>
-            </Card>
-          </Animated.View>
-        </ScrollView>
-
-        {/* Footer */}
-        <Surface
-          style={[styles.footer, { backgroundColor: theme.colors.surface }]}
-        >
-          <Paragraph style={[styles.footerText, { color: theme.colors.text }]}>
-            Desenvolvido por{" "}
-            <Text style={{ color: theme.colors.primary, fontWeight: "bold" }}>
-              ProfCastello
-            </Text>
-          </Paragraph>
-        </Surface>
-      </View>
-    </PaperProvider>
+        <View style={styles.lastUpdate}>
+          <Text style={styles.lastUpdateText}>
+            Última atualização: {formatTime(lastUpdate)}
+          </Text>
+        </View>
+      </ScrollView>
+    </LinearGradient>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    padding: 16,
+  scrollContainer: {
+    padding: 20,
+    paddingTop: 60,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "white",
+    textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+    marginBottom: 15,
+  },
+  connectionStatus: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+  },
+  connected: {
+    backgroundColor: "rgba(76, 175, 80, 0.2)",
+    borderColor: "#4CAF50",
+  },
+  disconnected: {
+    backgroundColor: "rgba(244, 67, 54, 0.2)",
+    borderColor: "#F44336",
+  },
+  connectionText: {
+    fontSize: 14,
+    fontWeight: "bold",
   },
   card: {
-    marginBottom: 16,
-    borderRadius: 12,
-    elevation: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 20,
+    padding: 25,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  loadingContent: {
+  cardHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    padding: 20,
+    marginBottom: 20,
   },
-  loadingTitle: {
-    marginTop: 16,
-    textAlign: "center",
+  icon: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
   },
-  dataContainer: {
+  iconText: {
+    fontSize: 20,
+    color: "white",
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+  },
+  valueDisplay: {
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  value: {
+    fontSize: 48,
+    fontWeight: "bold",
+    color: "#667eea",
+    marginBottom: 5,
+  },
+  unit: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
+  },
+  progressBar: {
+    width: "100%",
+    height: 8,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 4,
+    marginVertical: 15,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  stats: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 16,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
   },
-  dataCard: {
-    flex: 1,
-    padding: 16,
-    margin: 4,
-    borderRadius: 12,
+  stat: {
     alignItems: "center",
-    elevation: 2,
   },
-  dataLabel: {
-    fontSize: 14,
+  statLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 5,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+  chartCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 20,
+    padding: 25,
+    marginBottom: 20,
+    minHeight: 280,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  chart: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 10,
+    padding: 15,
+    position: "relative",
+  },
+  chartContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "flex-end",
+    flex: 1,
+    paddingBottom: 30,
+  },
+  chartBar: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    flex: 1,
+    maxWidth: 30,
+  },
+  temperatureBar: {
+    width: 12,
+    backgroundColor: "#ff6b6b",
+    borderRadius: 2,
+    marginBottom: 3,
+    minHeight: 5,
+  },
+  humidityBar: {
+    width: 12,
+    backgroundColor: "#4ecdc4",
+    borderRadius: 2,
+    minHeight: 5,
+  },
+  chartLabel: {
+    fontSize: 10,
+    color: "#666",
+    marginTop: 5,
+  },
+  noDataText: {
     textAlign: "center",
-    marginBottom: 8,
+    color: "#666",
+    fontSize: 16,
+    flex: 1,
+    textAlignVertical: "center",
   },
-  dataValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
+  chartLegend: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    flexDirection: "row",
+    gap: 15,
   },
-  progress: {
-    width: "100%",
-    marginTop: 8,
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 2,
+    marginRight: 5,
+  },
+  legendText: {
+    fontSize: 12,
+    color: "#666",
   },
   lastUpdate: {
-    textAlign: "center",
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  sectionTitle: {
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  statusRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  statusItem: {
     alignItems: "center",
-    flex: 1,
+    marginTop: 20,
+    marginBottom: 40,
   },
-  statusValue: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  statusLabel: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  footer: {
-    padding: 16,
-    alignItems: "center",
-  },
-  footerText: {
+  lastUpdateText: {
+    color: "rgba(255,255,255,0.8)",
     fontSize: 14,
-    textAlign: "center",
   },
 });
+
+const App = () => (
+  <ThemeProvider>
+    <Main />
+  </ThemeProvider>
+);
+
+export default App;

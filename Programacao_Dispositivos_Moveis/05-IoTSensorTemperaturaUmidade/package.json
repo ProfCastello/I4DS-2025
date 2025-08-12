@@ -4,18 +4,28 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.2",
+    "base-64": "^1.0.0",
+    "buffer": "^6.0.3",
+    "events": "^3.3.0",
     "expo": "~53.0.20",
+    "expo-dev-client": "^5.2.4",
+    "expo-linear-gradient": "^14.1.5",
     "expo-status-bar": "~2.2.3",
+    "mqtt": "^5.14.0",
     "paho-mqtt": "^1.1.0",
+    "process": "^0.11.10",
     "react": "19.0.0",
     "react-native": "0.79.5",
-    "react-native-paper": "^5.14.5"
+    "react-native-mqtt": "^0.1.0-beta4",
+    "react-native-paho-mqtt": "^0.1.1",
+    "react-native-paper": "^5.14.5",
+    "url": "^0.11.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
